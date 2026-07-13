@@ -27,42 +27,18 @@ claude mcp add ksp -s user -- npx -y git+https://github.com/tiranspierer/ksp-mcp
 ---
 
 <details>
-<summary>Tools (3)</summary>
+<summary>Tools</summary>
 
-| Tool | Description |
-|---|---|
-| `search_products` | Search by Hebrew/English `query`, **or** by `filters` (facet ids from `get_filters`) for precise category filtering. Returns name, price, Eilat price when present, brand, stock, labels, URL. `include_details` adds description/thumbnail/payments. Paginated (`page`). |
-| `get_filters` | Discover the filter facets for a term or category — groups (brand, size, resolution, features, energy, …) with each option's id and live product count. Feed chosen ids to `search_products`. |
-| `get_product` | Full detail for one product by UIN or URL: price, stock, variations. Opt-in flags: `include_specs`, `include_variations`, `include_branches`, `include_images`, `include_delivery`, `include_similar`. |
-
-</details>
-
-<details>
-<summary>Filtering (how to list, say, all 75″ TVs)</summary>
-
-KSP filtering is a path of tag ids joined by `..` (`/category/3158..137..3388` = TVs + Samsung + 75″), AND across facet groups, OR within one. The facet tree is returned by the API itself, so nothing is hardcoded.
-
-```
-get_filters(query="טלוויזיה")            → size group: 75'' = id "3158..3388" (count 38)
-search_products(filters=["3158..3388"])  → the 38 75" TVs
-search_products(filters=["3158..137","3158..3388"])  → add Samsung
-```
-
-Pass option ids verbatim from `get_filters` — they share the category prefix and merge automatically.
+- **`search_products`** — search by product name (Hebrew or English), or narrow by filters (brand, size, spec, price, …) to list the products in a category. Returns names, prices, stock, and links.
+- **`get_filters`** — see the filters available for a search or category (all screen sizes, brands, resolutions, features, …) and how many products match each, so a search can be narrowed precisely.
+- **`get_product`** — full details for one product (by id or URL): price, stock, and size/config options; optionally specs, images, branch availability, delivery options, and similar items.
 
 </details>
 
 <details>
 <summary>How it works</summary>
 
-KSP is a React SPA backed by an internal JSON API at `https://ksp.co.il/m_action/api/`:
-
-- **Search:** `GET /category/?search=<query>&page=<n>` → `result.items[]`
-- **Product:** `GET /item/<uin>` → `result.{data, products_options, specification, …}`
-
-The API sits behind Cloudflare, but a plain `fetch` with a realistic browser `User-Agent` (+ `Accept-Language`/`Referer`) returns clean JSON — no cookies, no browser automation. A stub UA gets the "Just a moment…" challenge, so the header set matters.
-
-Fields consumed from the API are plain JSON scalars. The only HTML fields (spec bodies, short description) are converted to Markdown with [`turndown`](https://github.com/mixmark-io/turndown) rather than hand-rolled parsing — low maintenance, and Markdown reads well for the model.
+Talks directly to KSP's internal JSON API — the same one the website uses — so results are fast and structured, with no HTML scraping. Runs locally over stdio; no account, API key, or login required.
 
 </details>
 
