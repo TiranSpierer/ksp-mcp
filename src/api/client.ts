@@ -16,47 +16,95 @@ const HEADERS: Record<string, string> = {
 };
 
 const TIMEOUT_MS = 20_000;
+const MAX_RETRIES = 3; // retries after the first attempt
+const BASE_DELAY_MS = 500;
+const MAX_DELAY_MS = 8_000;
 
-/** GET a KSP m_action API path and parse the JSON. The single fetch choke point. */
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/** Exponential backoff with jitter; honors a Retry-After hint (seconds). */
+function backoffDelay(attempt: number, retryAfterSec?: number): number {
+  if (retryAfterSec && retryAfterSec > 0) {
+    return Math.min(retryAfterSec * 1000, 30_000);
+  }
+  const exp = BASE_DELAY_MS * 2 ** attempt;
+  return Math.min(exp + Math.random() * BASE_DELAY_MS, MAX_DELAY_MS);
+}
+
+/**
+ * GET a KSP m_action API path and parse the JSON. The single fetch choke point
+ * for every tool — so retry/backoff on rate-limits and transient failures
+ * lives here once and covers all calls (search, filters, item, all-pages).
+ */
 export async function kspFetch<T = unknown>(path: string): Promise<T> {
   const url = `${KSP_API}${path}`;
-  log(`GET ${path}`);
+  let lastErr: Error | null = null;
 
-  let res: Response;
-  try {
-    res = await fetch(url, {
-      headers: HEADERS,
-      signal: AbortSignal.timeout(TIMEOUT_MS),
-    });
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    throw new Error(`Failed to reach KSP (${msg}). Check your connection.`);
-  }
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    if (attempt > 0) log(`retry ${attempt}/${MAX_RETRIES} ${path}`);
+    else log(`GET ${path}`);
 
-  if (!res.ok) {
-    if (res.status === 403 || res.status === 429) {
-      throw new Error(
-        `KSP blocked the request (HTTP ${res.status}) — likely rate-limited or bot-detected. Try again shortly.`,
+    // --- network / timeout (retryable) ---
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        headers: HEADERS,
+        signal: AbortSignal.timeout(TIMEOUT_MS),
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      lastErr = new Error(`Failed to reach KSP (${msg}).`);
+      if (attempt < MAX_RETRIES) {
+        await sleep(backoffDelay(attempt));
+        continue;
+      }
+      throw lastErr;
+    }
+
+    // --- rate-limit / temporary unavailability (retryable) ---
+    if ([429, 502, 503, 504].includes(res.status)) {
+      const retryAfter = Number(res.headers.get("retry-after"));
+      lastErr = new Error(
+        `KSP ${res.status} (rate-limited or temporarily unavailable) for ${path}.`,
       );
+      if (attempt < MAX_RETRIES) {
+        await sleep(backoffDelay(attempt, retryAfter));
+        continue;
+      }
+      throw lastErr;
     }
-    if (res.status === 404) {
-      throw new Error(`KSP resource not found (HTTP 404): ${path}`);
+
+    // --- hard failures (not retryable) ---
+    if (!res.ok) {
+      if (res.status === 403) {
+        throw new Error(`KSP blocked the request (HTTP 403 — bot check) for ${path}.`);
+      }
+      if (res.status === 404) {
+        throw new Error(`KSP resource not found (HTTP 404): ${path}`);
+      }
+      throw new Error(`KSP API error ${res.status} for ${path}`);
     }
-    throw new Error(`KSP API error ${res.status} for ${path}`);
+
+    const text = await res.text();
+
+    // Cloudflare challenge / any HTML page starts with '<' — treat as transient.
+    if (text.trimStart().startsWith("<")) {
+      lastErr = new Error(
+        `KSP returned an HTML page instead of JSON for ${path} (likely a Cloudflare challenge).`,
+      );
+      if (attempt < MAX_RETRIES) {
+        await sleep(backoffDelay(attempt));
+        continue;
+      }
+      throw lastErr;
+    }
+
+    try {
+      return JSON.parse(text) as T;
+    } catch {
+      throw new Error(`KSP returned invalid JSON for ${path}`);
+    }
   }
 
-  const text = await res.text();
-  // Cloudflare challenge / any HTML page comes back starting with '<' — detect
-  // without parsing so we return a clear message instead of a JSON crash.
-  if (text.trimStart().startsWith("<")) {
-    throw new Error(
-      `KSP returned an HTML page instead of JSON for ${path} (likely a Cloudflare challenge). Try again shortly.`,
-    );
-  }
-
-  try {
-    return JSON.parse(text) as T;
-  } catch {
-    throw new Error(`KSP returned invalid JSON for ${path}`);
-  }
+  throw lastErr ?? new Error(`KSP request failed: ${path}`);
 }

@@ -14,10 +14,10 @@ Then call `mcp__ksp-dev__*` tools directly to verify. The dev server is in `.mcp
 
 ES Modules, TypeScript (ES2022, NodeNext). Output → `dist/`.
 
-- `api/client.ts` — `kspFetch<T>()`, the single fetch choke point. Plain `fetch` to `https://ksp.co.il/m_action/api` with a realistic desktop-Chrome header set (Cloudflare keys on the UA; a stub UA gets the "Just a moment…" HTML). Detects an HTML challenge by a leading `<` and throws a clear message. Never call `fetch` directly elsewhere.
-- `api/ksp.ts` — `fetchCategory({query?, filters?, page?})` (`/category/?search=` for text, `/category/<id>..<id>` for facet paths) and `getItem()` (`/item/<uin>`).
+- `api/client.ts` — `kspFetch<T>()`, the single fetch choke point. Plain `fetch` to `https://ksp.co.il/m_action/api` with a realistic desktop-Chrome header set (Cloudflare keys on the UA; a stub UA gets the "Just a moment…" HTML). **Retries with exponential backoff + jitter** on 429/502/503/504, network/timeout errors, and Cloudflare-challenge HTML (honors `Retry-After`); 403/404/other 4xx fail fast. This is the one place backoff lives, so every call (search, filters, item, all-pages) is covered. Never call `fetch` directly elsewhere.
+- `api/ksp.ts` — `fetchCategory({query?, filters?, page?})`, `fetchCategoryAllPages()` (loops to `MAX_ALL_PAGES`=50, page-1 `minMax`/`total`, reports `capped`), and `getItem()`.
 - `types/ksp.ts` — lean interfaces for the fields we read (raw payloads are huge; we don't model all of it), including `KspFilterGroup`/`KspFilterOption`.
-- `text.ts` — `htmlToMarkdown()` (turndown; only for HTML fields), `extractUin()` (split-based, no regex), `shekel()`, `mergeFilterIds()` (split ids on `..`, dedupe, rejoin).
+- `text.ts` — `htmlToMarkdown()` (turndown; only for HTML fields), `extractUin()` (split-based, no regex), `shekel()`, `priceRangeLabel()` (guards the `{1,1}` placeholder KSP sends on result pages after page 1), `mergeFilterIds()` (split ids on `..`, dedupe, rejoin).
 - `schema.ts` — `stringArray()` zod preprocess (accepts array / JSON-string / bare string).
 - `tools/` — one file per tool, each exports a `ToolDefinition`. Registered in `tools/index.ts`.
 - `server.ts` — `createServer()`; registers tools, shared try/catch → `{ isError: true }`.

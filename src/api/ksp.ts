@@ -40,3 +40,48 @@ export async function getItem(uin: string): Promise<KspItemResult> {
   );
   return json.result ?? {};
 }
+
+/** Safety bound so a broad query can't spawn hundreds of sequential requests. */
+export const MAX_ALL_PAGES = 50;
+
+/**
+ * Fetch every page of a category/search (12/page) until KSP reports no `next`
+ * or MAX_ALL_PAGES is hit. `minMax`/`total` are taken from page 1 (KSP only
+ * returns a real range there). Returns whether it stopped early (`capped`).
+ */
+export async function fetchCategoryAllPages(opts: {
+  query?: string;
+  filters?: string;
+}): Promise<{
+  items: NonNullable<KspSearchResult["items"]>;
+  total?: number | string;
+  minMax?: KspSearchResult["minMax"];
+  suggestion?: KspSearchResult["suggestion"];
+  pagesFetched: number;
+  capped: boolean;
+}> {
+  const items: NonNullable<KspSearchResult["items"]> = [];
+  let total: number | string | undefined;
+  let minMax: KspSearchResult["minMax"];
+  let suggestion: KspSearchResult["suggestion"];
+  let page = 1;
+  let capped = false;
+
+  while (true) {
+    const r = await fetchCategory({ ...opts, page });
+    if (page === 1) {
+      total = r.products_total;
+      minMax = r.minMax;
+      suggestion = r.suggestion;
+    }
+    for (const it of r.items ?? []) items.push(it);
+    if (!r.next) break;
+    if (page >= MAX_ALL_PAGES) {
+      capped = true;
+      break;
+    }
+    page++;
+  }
+
+  return { items, total, minMax, suggestion, pagesFetched: page, capped };
+}

@@ -45,6 +45,17 @@ export function shekel(v: unknown): string | null {
 }
 
 /**
+ * "₪min – ₪max" from a min/max pair. Returns null for the {1,1} placeholder KSP
+ * sends on result pages after the first (only page 1 carries a real range).
+ */
+export function priceRangeLabel(min: unknown, max: unknown): string | null {
+  const lo = Number(min);
+  const hi = Number(max);
+  if (!lo || !hi || hi <= 1) return null;
+  return lo === hi ? shekel(lo) : `${shekel(lo)} – ${shekel(hi)}`;
+}
+
+/**
  * Merge KSP filter ids into a single `..`-joined path. Accepts option ids that
  * already include the category prefix (e.g. "3158..137", "3158..3388"); splits
  * every id on "..", de-dupes segments, and rejoins — so passing option ids
