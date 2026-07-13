@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-KSP MCP server (ksp.co.il). 3 tools over stdio, read-only. No auth — plain `fetch` with browser headers past Cloudflare.
+KSP MCP server (ksp.co.il). 4 tools over stdio, read-only. No auth — plain `fetch` with browser headers past Cloudflare.
 
 ## Build & Test
 
@@ -14,8 +14,8 @@ Then call `mcp__ksp-dev__*` tools directly to verify. The dev server is in `.mcp
 
 ES Modules, TypeScript (ES2022, NodeNext). Output → `dist/`.
 
-- `api/client.ts` — `kspFetch<T>()`, the single fetch choke point. Plain `fetch` to `https://ksp.co.il/m_action/api` with a realistic desktop-Chrome header set (Cloudflare keys on the UA; a stub UA gets the "Just a moment…" HTML). **Retries with exponential backoff + jitter** on 429/502/503/504, network/timeout errors, and Cloudflare-challenge HTML (honors `Retry-After`); 403/404/other 4xx fail fast. This is the one place backoff lives, so every call (search, filters, item, all-pages) is covered. Never call `fetch` directly elsewhere.
-- `api/ksp.ts` — `fetchCategory({query?, filters?, page?})`, `fetchCategoryAllPages()` (loops to `MAX_ALL_PAGES`=50, page-1 `minMax`/`total`, reports `capped`), and `getItem()`.
+- `api/client.ts` — `kspFetch<T>()`, the single fetch choke point. Plain `fetch` to `https://ksp.co.il/m_action/api` with a realistic desktop-Chrome header set (Cloudflare keys on the UA; a stub UA gets the "Just a moment…" HTML). **Retries with exponential backoff + jitter** on 429/502/503/504, network/timeout errors, and Cloudflare-challenge HTML (honors `Retry-After`); 403/404/other 4xx fail fast. This is the one place backoff lives, so every call (search, filters, item, all-pages, images) is covered. `fetchBinary(url)` reuses the same headers/backoff for image bytes (the image CDN `img.ksp.co.il` is behind the same Cloudflare gate — a bare fetch gets 403; the browser UA unlocks it). Never call `fetch` directly elsewhere.
+- `api/ksp.ts` — `fetchCategory({query?, filters?, page?})`, `fetchCategoryAllPages()` (loops to `MAX_ALL_PAGES`=50), `getItem()`, and `itemImageUrls()` (largest size per image).
 - `types/ksp.ts` — lean interfaces for the fields we read (raw payloads are huge; we don't model all of it), including `KspFilterGroup`/`KspFilterOption`.
 - `text.ts` — `htmlToMarkdown()` (turndown; only for HTML fields), `extractUin()` (split-based, no regex), `shekel()`, `priceRangeLabel()` (guards the `{1,1}` placeholder KSP sends on result pages after page 1), `mergeFilterIds()` (split ids on `..`, dedupe, rejoin).
 - `schema.ts` — `stringArray()` zod preprocess (accepts array / JSON-string / bare string).

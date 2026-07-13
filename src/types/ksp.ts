@@ -97,7 +97,15 @@ export interface KspItemResult {
     variations?: KspVariation[];
   };
   specification?: { items?: KspSpecRow[]; modalName?: string; [k: string]: unknown };
-  images?: Array<{ sizes?: Record<string, { src?: string }> } | string>;
+  images?: Array<
+    | {
+        sizes?: Record<
+          string,
+          { src?: string; metadata?: { width?: number | string; height?: number | string } }
+        >;
+      }
+    | string
+  >;
   delivery?: Array<{
     title?: string;
     type?: string;

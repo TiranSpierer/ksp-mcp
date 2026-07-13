@@ -41,6 +41,34 @@ export async function getItem(uin: string): Promise<KspItemResult> {
   return json.result ?? {};
 }
 
+/** Every product image URL, picking the largest available size per image. */
+export function itemImageUrls(item: KspItemResult): string[] {
+  const out: string[] = [];
+  for (const im of item.images ?? []) {
+    if (typeof im === "string") {
+      if (im) out.push(im);
+      continue;
+    }
+    const sizes = im?.sizes;
+    if (!sizes) continue;
+    let bestSrc: string | undefined;
+    let bestRank = -1;
+    for (const key of Object.keys(sizes)) {
+      const s = sizes[key];
+      if (!s?.src) continue;
+      const width = Number(s.metadata?.width) || 0;
+      // Prefer explicit width; otherwise favor the "b" (big) size over others.
+      const rank = width > 0 ? width : key === "b" ? 1 : 0;
+      if (rank > bestRank) {
+        bestRank = rank;
+        bestSrc = s.src;
+      }
+    }
+    if (bestSrc) out.push(bestSrc);
+  }
+  return out;
+}
+
 /** Safety bound so a broad query can't spawn hundreds of sequential requests. */
 export const MAX_ALL_PAGES = 50;
 

@@ -2,6 +2,7 @@ import type { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
 import { searchProductsTool } from "./search.js";
 import { getFiltersTool } from "./filters.js";
 import { getProductTool } from "./products.js";
+import { getProductImagesTool } from "./images.js";
 
 export interface ToolDefinition {
   name: string;
@@ -17,4 +18,5 @@ export const tools: ToolDefinition[] = [
   searchProductsTool,
   getFiltersTool,
   getProductTool,
+  getProductImagesTool,
 ];

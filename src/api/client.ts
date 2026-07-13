@@ -108,3 +108,52 @@ export async function kspFetch<T = unknown>(path: string): Promise<T> {
 
   throw lastErr ?? new Error(`KSP request failed: ${path}`);
 }
+
+/**
+ * Fetch binary bytes (e.g. a product image) from a full KSP URL. Reuses the
+ * same browser headers + backoff — KSP's image CDN (img.ksp.co.il) is behind
+ * the same Cloudflare gate, so a bare fetch gets a 403 HTML page; the browser
+ * User-Agent is what unlocks it.
+ */
+export async function fetchBinary(
+  url: string,
+): Promise<{ buffer: Buffer; contentType: string }> {
+  let lastErr: Error | null = null;
+
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        headers: HEADERS,
+        signal: AbortSignal.timeout(TIMEOUT_MS),
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      lastErr = new Error(`Failed to fetch ${url} (${msg}).`);
+      if (attempt < MAX_RETRIES) {
+        await sleep(backoffDelay(attempt));
+        continue;
+      }
+      throw lastErr;
+    }
+
+    if ([429, 502, 503, 504].includes(res.status)) {
+      const retryAfter = Number(res.headers.get("retry-after"));
+      lastErr = new Error(`KSP ${res.status} fetching ${url}.`);
+      if (attempt < MAX_RETRIES) {
+        await sleep(backoffDelay(attempt, retryAfter));
+        continue;
+      }
+      throw lastErr;
+    }
+
+    if (!res.ok) {
+      throw new Error(`Image fetch failed (HTTP ${res.status}): ${url}`);
+    }
+
+    const buffer = Buffer.from(await res.arrayBuffer());
+    return { buffer, contentType: res.headers.get("content-type") ?? "" };
+  }
+
+  throw lastErr ?? new Error(`Image fetch failed: ${url}`);
+}

@@ -32,6 +32,7 @@ claude mcp add ksp -s user -- npx -y git+https://github.com/tiranspierer/ksp-mcp
 - **`search_products`** — search by product name (Hebrew or English), or narrow by filters (brand, size, spec, price, …) to list the products in a category — one page, or every page in a single call. Returns names, prices, stock, and links.
 - **`get_filters`** — see the filters available for a search or category (all screen sizes, brands, resolutions, features, …) and how many products match each, so a search can be narrowed precisely.
 - **`get_product`** — full details for one product (by id or URL): price, stock, and size/config options; optionally specs, images, branch availability, delivery options, and similar items.
+- **`get_product_images`** — download all of a product's photos and get their local file paths, ready to open and view.
 
 </details>
 
