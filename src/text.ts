@@ -43,3 +43,20 @@ export function shekel(v: unknown): string | null {
   if (!n || Number.isNaN(n)) return null;
   return `₪${Math.round(n).toLocaleString("en-US")}`;
 }
+
+/**
+ * Merge KSP filter ids into a single `..`-joined path. Accepts option ids that
+ * already include the category prefix (e.g. "3158..137", "3158..3388"); splits
+ * every id on "..", de-dupes segments, and rejoins — so passing option ids
+ * verbatim from get_filters just works, and the shared category id collapses.
+ */
+export function mergeFilterIds(ids: string[] | undefined): string {
+  const seg = new Set<string>();
+  for (const id of ids ?? []) {
+    for (const part of String(id).split("..")) {
+      const s = part.trim();
+      if (s) seg.add(s);
+    }
+  }
+  return [...seg].join("..");
+}

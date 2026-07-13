@@ -1,26 +1,35 @@
 import { z } from "zod";
-import { searchProducts } from "../api/ksp.js";
+import { fetchCategory } from "../api/ksp.js";
 import { KSP_WEB } from "../api/client.js";
-import { shekel } from "../text.js";
+import { shekel, mergeFilterIds } from "../text.js";
 import { toYaml } from "../format.js";
+import { stringArray } from "../schema.js";
 import type { KspSearchItem } from "../types/ksp.js";
 
 export const searchProductsTool = {
   name: "search_products",
   description:
-    "Search products on KSP (ksp.co.il), Israel's electronics retailer. Supports Hebrew and English queries.",
+    "Search products on KSP (ksp.co.il), Israel's electronics retailer. Free-text `query`, or `filters` (facet ids from get_filters) for precise category filtering. Supports Hebrew and English.",
   annotations: { readOnlyHint: true },
   schema: z.object({
     query: z
       .string()
-      .describe("Search term, Hebrew or English (e.g. 'lg oled 65', 'אוזניות')."),
+      .optional()
+      .describe(
+        "Search term, Hebrew or English (e.g. 'lg oled 65', 'אוזניות'). Provide `query` or `filters`.",
+      ),
+    filters: stringArray()
+      .optional()
+      .describe(
+        "Facet ids from get_filters (e.g. ['3158..137','3158..3388'] = Samsung 75\" TVs). Combined AND across groups, OR within a group. Use instead of/with query.",
+      ),
     page: z.coerce
       .number()
       .int()
       .min(1)
       .optional()
       .default(1)
-      .describe("Result page (12 products per page)."),
+      .describe("Result page (12 products per page). Fetch further pages as needed."),
     include_details: z
       .boolean()
       .optional()
@@ -30,11 +39,29 @@ export const searchProductsTool = {
       ),
   }),
   handler: async (args: {
-    query: string;
+    query?: string;
+    filters?: string[];
     page?: number;
     include_details?: boolean;
   }) => {
-    const r = await searchProducts(args.query, args.page ?? 1);
+    const filters = mergeFilterIds(args.filters);
+    if (!filters && !args.query) {
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: "Provide `query` (free text) or `filters` (facet ids from get_filters).",
+          },
+        ],
+        isError: true,
+      };
+    }
+
+    const r = await fetchCategory({
+      query: args.query,
+      filters: filters || undefined,
+      page: args.page ?? 1,
+    });
     const items = r.items ?? [];
 
     const products = items.map((it: KspSearchItem) => {
@@ -67,18 +94,17 @@ export const searchProductsTool = {
     });
 
     if (products.length === 0) {
+      const what = filters ? `filters ${filters}` : `"${args.query}"`;
       return {
         content: [
-          {
-            type: "text" as const,
-            text: `No products found for "${args.query}" on KSP.`,
-          },
+          { type: "text" as const, text: `No products found for ${what} on KSP.` },
         ],
       };
     }
 
     const mm = r.minMax;
     const result: Record<string, unknown> = { total: r.products_total };
+    if (filters) result.applied_filters = filters;
     if (mm && (mm.min || mm.max))
       result.price_range = `${shekel(mm.min)} – ${shekel(mm.max)}`;
     if (r.next) result.next_page = r.next;

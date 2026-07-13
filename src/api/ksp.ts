@@ -1,15 +1,34 @@
 import { kspFetch } from "./client.js";
 import type { KspSearchResult, KspItemResult } from "../types/ksp.js";
 
-/** Search products. 12 results per page. */
-export async function searchProducts(
-  query: string,
-  page: number,
-): Promise<KspSearchResult> {
-  const params = new URLSearchParams({ search: query });
-  if (page > 1) params.set("page", String(page));
+/**
+ * Fetch a category/search page. Two modes:
+ *  - `filters` set -> browse the faceted category path `/category/<id>..<id>`
+ *  - otherwise      -> free-text `/category/?search=<query>`
+ * `page` (12/page) and a `query` refinement can be combined with either.
+ */
+export async function fetchCategory(opts: {
+  query?: string;
+  filters?: string;
+  page?: number;
+}): Promise<KspSearchResult> {
+  const { query, filters, page } = opts;
+  const params = new URLSearchParams();
+  if (page && page > 1) params.set("page", String(page));
+
+  let path: string;
+  if (filters) {
+    // Tag-id path — do NOT encode the `..` separators.
+    path = `/category/${filters}`;
+    if (query) params.set("search", query);
+  } else {
+    path = `/category/`;
+    params.set("search", query ?? "");
+  }
+
+  const qs = params.toString();
   const json = await kspFetch<{ result: KspSearchResult }>(
-    `/category/?${params.toString()}`,
+    `${path}${qs ? `?${qs}` : ""}`,
   );
   return json.result ?? {};
 }

@@ -34,11 +34,31 @@ export interface KspSearchItem {
 }
 
 export interface KspSearchResult {
-  products_total?: number;
+  products_total?: number | string;
   items?: KspSearchItem[];
   next?: number;
   minMax?: { min?: number; max?: number; [k: string]: unknown };
   suggestion?: { phrases?: { text?: string }[] };
+  filter?: Record<string, KspFilterGroup>;
+  [k: string]: unknown;
+}
+
+/** One selectable option inside a filter group (e.g. a brand, a size). */
+export interface KspFilterOption {
+  /** The `..`-joined tag-id path to apply this option (e.g. "3158..137"). */
+  action?: string;
+  name?: string;
+  products_count?: number;
+  [k: string]: unknown;
+}
+
+/** A filter facet group (e.g. brand, size, resolution). */
+export interface KspFilterGroup {
+  catName?: string;
+  hide?: boolean;
+  /** True number of options (KSP caps `tags` at 30 per group). */
+  total?: number;
+  tags?: Record<string, KspFilterOption>;
   [k: string]: unknown;
 }
 

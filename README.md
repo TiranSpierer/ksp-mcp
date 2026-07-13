@@ -27,12 +27,28 @@ claude mcp add ksp -s user -- npx -y git+https://github.com/tiranspierer/ksp-mcp
 ---
 
 <details>
-<summary>Tools (2)</summary>
+<summary>Tools (3)</summary>
 
 | Tool | Description |
 |---|---|
-| `search_products` | Search products by Hebrew/English query. Returns name, price, Eilat (tax-free) price when present, brand, stock, labels, URL. `include_details` adds description/thumbnail/payments. |
-| `get_product` | Full detail for one product by UIN or URL: price, stock, and variations. Opt-in flags: `include_specs`, `include_variations`, `include_branches`, `include_images`, `include_delivery`, `include_similar`. |
+| `search_products` | Search by Hebrew/English `query`, **or** by `filters` (facet ids from `get_filters`) for precise category filtering. Returns name, price, Eilat price when present, brand, stock, labels, URL. `include_details` adds description/thumbnail/payments. Paginated (`page`). |
+| `get_filters` | Discover the filter facets for a term or category — groups (brand, size, resolution, features, energy, …) with each option's id and live product count. Feed chosen ids to `search_products`. |
+| `get_product` | Full detail for one product by UIN or URL: price, stock, variations. Opt-in flags: `include_specs`, `include_variations`, `include_branches`, `include_images`, `include_delivery`, `include_similar`. |
+
+</details>
+
+<details>
+<summary>Filtering (how to list, say, all 75″ TVs)</summary>
+
+KSP filtering is a path of tag ids joined by `..` (`/category/3158..137..3388` = TVs + Samsung + 75″), AND across facet groups, OR within one. The facet tree is returned by the API itself, so nothing is hardcoded.
+
+```
+get_filters(query="טלוויזיה")            → size group: 75'' = id "3158..3388" (count 38)
+search_products(filters=["3158..3388"])  → the 38 75" TVs
+search_products(filters=["3158..137","3158..3388"])  → add Samsung
+```
+
+Pass option ids verbatim from `get_filters` — they share the category prefix and merge automatically.
 
 </details>
 

@@ -1,5 +1,6 @@
 import type { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
 import { searchProductsTool } from "./search.js";
+import { getFiltersTool } from "./filters.js";
 import { getProductTool } from "./products.js";
 
 export interface ToolDefinition {
@@ -12,4 +13,8 @@ export interface ToolDefinition {
   ) => Promise<{ content: { type: "text"; text: string }[]; isError?: boolean }>;
 }
 
-export const tools: ToolDefinition[] = [searchProductsTool, getProductTool];
+export const tools: ToolDefinition[] = [
+  searchProductsTool,
+  getFiltersTool,
+  getProductTool,
+];
