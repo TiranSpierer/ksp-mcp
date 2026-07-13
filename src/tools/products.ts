@@ -81,7 +81,10 @@ export const getProductTool = {
     if (spec.modalName) out.model = spec.modalName;
     if (d.brandName) out.brand = d.brandName;
     out.price = shekel(d.price);
-    if (d.min_price && d.min_price !== d.price) out.club_price = shekel(d.min_price);
+    // KSP has no club/member price — regular + Eilat (tax-free) are the only
+    // real tags. `min_price` only diverges on multi-variation products, where
+    // it's the cheapest variation (already listed under `variations`), not a
+    // discount, so we don't surface it as a separate price.
     if (d.eilatPrice) out.eilat_price = shekel(d.eilatPrice);
     out.in_stock = Boolean(d.addToCart);
     if (d.smalldesc) out.description = htmlToMarkdown(d.smalldesc);

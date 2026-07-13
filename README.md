@@ -31,7 +31,7 @@ claude mcp add ksp -s user -- npx -y git+https://github.com/tiranspierer/ksp-mcp
 
 | Tool | Description |
 |---|---|
-| `search_products` | Search products by Hebrew/English query. Returns name, price, club/Eilat price, brand, stock, labels, URL. `include_details` adds description/thumbnail/payments. |
+| `search_products` | Search products by Hebrew/English query. Returns name, price, Eilat (tax-free) price when present, brand, stock, labels, URL. `include_details` adds description/thumbnail/payments. |
 | `get_product` | Full detail for one product by UIN or URL: price, stock, and variations. Opt-in flags: `include_specs`, `include_variations`, `include_branches`, `include_images`, `include_delivery`, `include_similar`. |
 
 </details>

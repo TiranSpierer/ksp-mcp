@@ -43,8 +43,6 @@ export const searchProductsTool = {
         name: it.name,
         price: shekel(it.price),
       };
-      if (it.min_price && it.min_price !== it.price)
-        out.club_price = shekel(it.min_price);
       const eilat = it.eilatPrice || it.min_eilat_price;
       if (eilat) out.eilat_price = shekel(eilat);
       if (it.brandName) out.brand = it.brandName;
