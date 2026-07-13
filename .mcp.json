@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "ksp-dev": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["dist/index.js"],
+      "env": {}
+    }
+  }
+}

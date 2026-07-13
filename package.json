@@ -1,0 +1,37 @@
+{
+  "name": "ksp-mcp",
+  "version": "1.0.0",
+  "description": "MCP server for KSP (ksp.co.il), Israel's electronics retailer — search products and fetch product details",
+  "type": "module",
+  "main": "dist/index.js",
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "bin": {
+    "ksp-mcp": "dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "prebuild": "node -e \"const fs=require('fs');fs.rmSync('dist',{recursive:true,force:true})\"",
+    "build": "node ./node_modules/typescript/bin/tsc",
+    "reload": "npm run build && pkill -f 'node dist/index.js' || true",
+    "prepare": "npm run build"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "turndown": "^7.2.0",
+    "yaml": "^2.8.3",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/turndown": "^5.0.5",
+    "typescript": "^5.7.0"
+  }
+}
