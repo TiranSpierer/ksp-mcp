@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { getItem } from "../api/ksp.js";
+import { getItem, getItemRaw } from "../api/ksp.js";
 import { KSP_WEB } from "../api/client.js";
 import { shekel, extractUin, htmlToMarkdown } from "../text.js";
 import { toYaml } from "../format.js";
@@ -24,12 +24,19 @@ function mapProduct(p: unknown): unknown {
 export const getProductTool = {
   name: "get_product",
   description:
-    "Get full details for one KSP product by UIN or URL: price, stock, and variations. Specs, branch stock, images, delivery, and similar items are opt-in flags.",
+    "Get full details for one KSP product by UIN or URL: price, active promo/discount pricing (bms), stock, and variations. Specs, branch stock, images, delivery, and similar items are opt-in flags; include_raw dumps the entire untouched payload.",
   annotations: { readOnlyHint: true },
   schema: z.object({
     uin: z
       .string()
       .describe("Product UIN (e.g. '407256') or a full ksp.co.il/web/item/<uin> URL."),
+    include_raw: z
+      .boolean()
+      .optional()
+      .default(false)
+      .describe(
+        "Return the entire raw KSP API payload untouched (no field selection or reshaping). When true, all other flags are ignored.",
+      ),
     include_specs: z
       .boolean()
       .optional()
@@ -65,6 +72,7 @@ export const getProductTool = {
   }),
   handler: async (args: {
     uin: string;
+    include_raw?: boolean;
     include_specs?: boolean;
     include_variations?: boolean;
     include_branches?: boolean;
@@ -73,6 +81,15 @@ export const getProductTool = {
     include_similar?: boolean;
   }) => {
     const uin = extractUin(args.uin);
+
+    // Escape hatch: dump the entire untouched payload; ignore all other flags.
+    if (args.include_raw) {
+      const raw = await getItemRaw(uin);
+      return {
+        content: [{ type: "text" as const, text: JSON.stringify(raw, null, 2) }],
+      };
+    }
+
     const r: KspItemResult = await getItem(uin);
     const d = r.data ?? {};
     const spec = r.specification ?? {};
@@ -87,6 +104,14 @@ export const getProductTool = {
     // discount, so we don't surface it as a separate price.
     if (d.eilatPrice) out.eilat_price = shekel(d.eilatPrice);
     out.in_stock = Boolean(d.addToCart);
+    // Active promo/campaign pricing lives in `bms` (keyed by UIN), separate from
+    // `data.price` (the list price). We surface it verbatim rather than deciding
+    // which price "wins" — both are useful context (bms.discount.value is the
+    // real current price when a campaign is live, and the payment plan is
+    // computed off it). Attached as-is; no field selection.
+    if (r.bms && typeof r.bms === "object" && Object.keys(r.bms).length) {
+      out.bms = r.bms;
+    }
     if (d.smalldesc) out.description = htmlToMarkdown(d.smalldesc);
 
     // --- Variations (adaptive: inline when few, summarized when many) ---

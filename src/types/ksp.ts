@@ -117,6 +117,8 @@ export interface KspItemResult {
     | Array<{ name?: string; title?: string; [k: string]: unknown }>
     | Record<string, { name?: string; title?: string; [k: string]: unknown }>;
   payments?: KspPayments;
+  /** Promo/campaign pricing keyed by UIN (discount, triggered campaigns, etc.). */
+  bms?: Record<string, unknown>;
   similarItem?: unknown;
   complementary_products?: unknown[];
   [k: string]: unknown;

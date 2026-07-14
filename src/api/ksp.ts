@@ -41,6 +41,15 @@ export async function getItem(uin: string): Promise<KspItemResult> {
   return json.result ?? {};
 }
 
+/**
+ * The entire untouched API response for a single product (the full envelope,
+ * not just `result`). Escape hatch for get_product's `include_raw` — we surface
+ * exactly what KSP sends, with no field selection or reshaping.
+ */
+export async function getItemRaw(uin: string): Promise<unknown> {
+  return kspFetch<unknown>(`/item/${encodeURIComponent(uin)}`);
+}
+
 /** Every product image URL, picking the largest available size per image. */
 export function itemImageUrls(item: KspItemResult): string[] {
   const out: string[] = [];
