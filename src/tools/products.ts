@@ -171,7 +171,13 @@ export const getProductTool = {
     }
 
     if (args.include_branches) {
-      const branches = (r.stock ?? [])
+      const rawStock = r.stock;
+      const stockArray = Array.isArray(rawStock)
+        ? rawStock
+        : rawStock && typeof rawStock === "object"
+          ? Object.values(rawStock)
+          : [];
+      const branches = stockArray
         .map((s) => s?.name || s?.title)
         .filter((n): n is string => Boolean(n));
       out.branches = branches.length

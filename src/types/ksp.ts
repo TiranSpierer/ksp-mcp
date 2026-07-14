@@ -113,7 +113,9 @@ export interface KspItemResult {
     time?: { min?: number; max?: number };
     [k: string]: unknown;
   }>;
-  stock?: Array<{ name?: string; title?: string; [k: string]: unknown }>;
+  stock?:
+    | Array<{ name?: string; title?: string; [k: string]: unknown }>
+    | Record<string, { name?: string; title?: string; [k: string]: unknown }>;
   payments?: KspPayments;
   similarItem?: unknown;
   complementary_products?: unknown[];
