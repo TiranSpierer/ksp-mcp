@@ -34,7 +34,7 @@ ES Modules, TypeScript (ES2022, NodeNext). Output → `dist/`.
 
 - **No regex / HTML parsing** for data extraction. Read JSON scalars directly. The only HTML (spec bodies, `smalldesc`) goes through `turndown` (maintained lib) → Markdown.
 - KSP has **no club/member price** — only regular + Eilat (tax-free). `min_price` is cheapest-variation on multi-config items, not a discount; don't surface it as a price.
-- **`data.price` is the list price; the live promo price lives in `bms[uin].discount.value`** (Eilat: `value_eilat`) when a campaign is active — the payment plan is computed off it, not `data.price`. `get_product` attaches the whole `bms` block verbatim by default (no "which price wins" logic — both are shown as context).
+- **`data.price` is the list price; the live sale price lives in `bms[uin].discount.value`** (Eilat: `value_eilat`) when a real markdown is active — the payment plan is computed off it, not `data.price`. `get_product` surfaces this as a lean `discount` block (sale price + campaign name) **only when `discount.value` exists**; a `discount` with just a name is a cross-sell campaign, not a price cut, and is skipped (full `bms` — icons, cross-sells, fdi — is available via `include_raw`).
 - Responses: YAML via `toYaml()`; plain text for empty/no-result cases.
 - `get_product` is lean by default; bloaty data (specs, all variations, branches, images, full delivery, similar) is opt-in via `include_*` flags. `include_raw` is an escape hatch that dumps the entire untouched API payload as JSON and ignores all other flags. `search_products` adds bloaty per-item extras via `include_details`.
 - Tool descriptions: one sentence, no examples.

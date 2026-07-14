@@ -104,13 +104,34 @@ export const getProductTool = {
     // discount, so we don't surface it as a separate price.
     if (d.eilatPrice) out.eilat_price = shekel(d.eilatPrice);
     out.in_stock = Boolean(d.addToCart);
-    // Active promo/campaign pricing lives in `bms` (keyed by UIN), separate from
-    // `data.price` (the list price). We surface it verbatim rather than deciding
-    // which price "wins" — both are useful context (bms.discount.value is the
-    // real current price when a campaign is live, and the payment plan is
-    // computed off it). Attached as-is; no field selection.
-    if (r.bms && typeof r.bms === "object" && Object.keys(r.bms).length) {
-      out.bms = r.bms;
+    // Active promo pricing lives in bms[uin].discount, separate from data.price
+    // (the list price). We surface just the real markdown — sale price + what the
+    // campaign is — not the icons / cross-sell / duplicate-payment noise that
+    // fills the rest of the bms block (available in full via include_raw). A
+    // `discount` without a `value` is a cross-sell campaign, not a price cut, so
+    // it's skipped here.
+    const discounts = Object.entries(r.bms ?? {})
+      .map(([itemUin, entry]) => {
+        const dsc =
+          entry && typeof entry === "object"
+            ? (entry as Record<string, unknown>).discount
+            : null;
+        if (!dsc || typeof dsc !== "object") return null;
+        const o = dsc as Record<string, unknown>;
+        if (o.value == null) return null;
+        return {
+          uin: itemUin,
+          price: shekel(o.value),
+          eilat_price: o.value_eilat != null ? shekel(o.value_eilat) : undefined,
+          about: typeof o.name === "string" ? o.name : undefined,
+        };
+      })
+      .filter((x): x is NonNullable<typeof x> => x !== null);
+    if (discounts.length === 1) {
+      const { uin: _uin, ...only } = discounts[0];
+      out.discount = only;
+    } else if (discounts.length > 1) {
+      out.discount = discounts;
     }
     if (d.smalldesc) out.description = htmlToMarkdown(d.smalldesc);
 
