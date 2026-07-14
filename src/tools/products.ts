@@ -182,7 +182,7 @@ export const getProductTool = {
         .filter((n): n is string => Boolean(n));
       out.branches = branches.length
         ? branches
-        : "No branch stock listed (online only or currently unavailable).";
+        : "No per-store stock breakdown for this item — see in_stock / delivery for availability.";
     }
 
     if (args.include_images) {
